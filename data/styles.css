@@ -10,13 +10,17 @@ html {
   align-items: center;
 }
 
-#graph-canvas {
+#graph {
   grid-area: graph;
   min-width: 100%;
   min-height: 100%;
   max-width: 100%;
   max-height: 100%;
   background-color: lightblue;
+}
+
+.axis {
+  font-size: 18px;
 }
 
 .control-div {
@@ -59,8 +63,8 @@ input:focus {
   right: 0;
   bottom: 0;
   background-color: #ccc;
-  -webkit-transition: 0.4s;
-  transition: 0.4s;
+  -webkit-transition: transform 0.4s ease;
+  transition: transform 0.4s ease;
 }
 
 .slider:before {
@@ -71,8 +75,8 @@ input:focus {
   left: var(--slider-gap);
   bottom: var(--slider-gap);
   background-color: green;
-  -webkit-transition: 0.4s;
-  transition: 0.4s;
+  -webkit-transition: transform 0.4s ease;
+  transition: transform 0.4s ease;
 }
 
 input:checked + .slider {
@@ -84,9 +88,9 @@ input:focus + .slider {
 }
 
 input:checked + .slider:before {
-  -webkit-transform: translateX(100px);
-  -ms-transform: translateX(100px);
-  transform: translateX(100px);
+  -webkit-transform: translateX(calc(var(--switch-width) - var(--slider-size)));
+  -ms-transform: translateX(calc(var(--switch-width) - var(--slider-size)));
+  transform: translateX(calc(var(--switch-width) - var(--slider-size)));
 }
 
 .slider.round {

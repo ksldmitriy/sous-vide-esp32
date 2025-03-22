@@ -14,12 +14,9 @@ function init_socket() {
   socket.onerror = on_ws_error;
 }
 
-function on_ws_open(event) {
-  console.log("Connection opened");
-}
+function on_ws_open(event) {}
 
 function on_ws_close(event) {
-  console.log("Connection closed");
   setTimeout(init_socket, 2000);
 }
 
@@ -43,48 +40,94 @@ function on_ws_message(event) {
   }
 }
 
-function on_ws_error(event) {
-  console.log("Socket error:", event);
+function on_ws_error(event) {}
+
+const data = [
+  { time: 1, value: 10 },
+  { time: 2, value: 10 },
+  { time: 3, value: 10 },
+  { time: 4, value: 10 },
+  { time: 5, value: 10 },
+  { time: 6, value: 15 },
+  { time: 7, value: 23 },
+  { time: 8, value: 15 },
+  { time: 9, value: 10 },
+];
+
+let graph = {
+  margin: { left: 48, right: 32, top: 32, bottom: 32 },
+  svg: null,
+  path: null,
+  line: null,
+  x_axis: null,
+  y_axis: null,
+};
+
+function create_chart() {
+  const svg = d3.select("#graph");
+  const width = parseInt(svg.style("width"));
+  const height = parseInt(svg.style("height"));
+  const margin = graph.margin;
+  // X axis
+  const x = d3
+    .scaleLinear()
+    .domain([d3.max(data, (d) => 9 - d.time), d3.min(data, (d) => 9 - d.time)])
+    .range([margin.left, width - margin.right]);
+
+  graph.x_axis = svg
+    .append("g")
+    .attr("transform", `translate(0, ${height - margin.bottom})`)
+    .call(d3.axisBottom(x).ticks(3));
+
+  graph.x_axis.selectAll(".tick text").attr("class", "axis");
+
+  // Y axis
+  const y = d3
+    .scaleLinear()
+    .domain([
+      d3.max(data, (d) => d.value) + 5,
+      d3.min(data, (d) => d.value) - 5,
+    ])
+    .range([margin.top, height - margin.bottom]);
+
+  graph.y_axis = svg
+    .append("g")
+    .attr("transform", `translate(${margin.left}, 0)`)
+    .call(d3.axisLeft(y).ticks(10))
+    .call((g) =>
+      g
+        .selectAll(".tick line")
+        .clone()
+        .attr("x2", width - margin.left - margin.right)
+        .attr("stroke-opacity", 0.2),
+    );
+
+  graph.y_axis.selectAll(".tick text").attr("class", "axis");
+
+  // data
+  graph.line = d3
+    .line()
+    .x((d) => x(9 - d.time))
+    .y((d) => y(d.value));
+
+  graph.path = svg
+    .datum([])
+    .append("path")
+    .attr("fill", "none")
+    .attr("stroke", "black")
+    .attr("stroke-width", 1.5)
+    .attr("d", graph.line);
+
+  update_chart();
 }
 
-function create_test_graph() {
-  const xValues = [50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150];
-  const yValues = [7, 8, 8, 9, 9, 9, 10, 11, 14, 14, 15];
-
-  new Chart("graph-canvas", {
-    type: "line",
-    data: {
-      labels: xValues,
-      datasets: [
-        {
-          fill: false,
-          lineTension: 0,
-          backgroundColor: "rgba(0,0,255,1.0)",
-          borderColor: "rgba(0,0,255,0.1)",
-          data: yValues,
-        },
-      ],
-    },
-    options: {
-      legend: { display: false },
-      scales: {
-        yAxes: [{ ticks: { min: 6, max: 16, fontSize: 32 } }],
-        xAxes: [{ ticks: { fontSize: 32 } }],
-      },
-
-      plugins: {
-        legend: {
-          font: {
-            size: 64,
-          },
-        },
-      },
-    },
-  });
+function update_chart() {
+  graph.path.datum(data).transition().attr("d", graph.line);
 }
 
 function on_load(event) {
-  create_test_graph();
+  create_chart();
+  //window.addEventListener("resize", update_chart);
 
   init_socket();
 
@@ -135,8 +178,6 @@ function on_target_temperature_confirm(value) {
   const data = {
     target_temperature: float_value,
   };
-
-  console.log("value:", float_value);
 
   const json_string = JSON.stringify(data);
   socket.send(json_string);

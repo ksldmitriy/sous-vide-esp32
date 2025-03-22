@@ -14,6 +14,7 @@
 static char *s_index_html;
 static char *s_styles_css;
 static char *s_layout_css;
+static char *s_d3_js;
 static char *s_main_js;
 
 struct {
@@ -22,6 +23,7 @@ struct {
 } static s_files[4] = {{"/spiffs/index.html", &s_index_html},
                        {"/spiffs/styles.css", &s_styles_css},
                        {"/spiffs/layout.css", &s_layout_css},
+                       {"/spiffs/d3.js", &s_d3_js},
                        {"/spiffs/main.js", &s_main_js}};
 
 static httpd_handle_t s_server = NULL;
@@ -54,6 +56,9 @@ void load_web_pages() {
         }
 
         *s_files[i].var = calloc(st.st_size + 1, 1);
+        if (*s_files[i].var == NULL) {
+            ESP_LOGE(TAG, "cant allocate memory for %s", s_files[i].path);
+        }
 
         FILE *fp = fopen(s_files[i].path, "r");
         if (fread(*s_files[i].var, st.st_size, 1, fp) == 0) {
@@ -79,6 +84,9 @@ httpd_handle_t setup_web_server() {
     httpd_register_uri_handler(s_server, &uri_get_file);
 
     uri_get_file.uri = "/layout.css";
+    httpd_register_uri_handler(s_server, &uri_get_file);
+
+    uri_get_file.uri = "/d3.js";
     httpd_register_uri_handler(s_server, &uri_get_file);
 
     uri_get_file.uri = "/main.js";
@@ -149,6 +157,9 @@ static esp_err_t get_req_handler(httpd_req_t *p_req) {
     } else if (!strcmp(p_req->uri, "/layout.css")) {
         ret = httpd_resp_set_type(p_req, "text/css");
         data = s_layout_css;
+    } else if (!strcmp(p_req->uri, "/d3.js")) {
+        ret = httpd_resp_set_type(p_req, "text/javascript");
+        data = s_d3_js;
     } else if (!strcmp(p_req->uri, "/main.js")) {
         ret = httpd_resp_set_type(p_req, "text/javascript");
         data = s_main_js;
@@ -225,7 +236,8 @@ static esp_err_t on_message(httpd_ws_frame_t p_frame) {
     }
 
     cJSON *is_heating_on_json = cJSON_GetObjectItem(root, "is_heating_on");
-    if (is_heating_on_json && (is_heating_on_json->type == cJSON_True || is_heating_on_json->type == cJSON_False)) {
+    if (is_heating_on_json &&
+        (is_heating_on_json->type == cJSON_True || is_heating_on_json->type == cJSON_False)) {
         is_heating_on = is_heating_on_json->type == cJSON_True;
         ESP_LOGI(TAG, "is on updated to: %s", is_heating_on ? "ON" : "OFF");
     }
