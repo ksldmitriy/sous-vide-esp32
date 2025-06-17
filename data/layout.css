@@ -1,12 +1,12 @@
 @media (min-width: 1024px) {
   body {
     display: grid;
-    grid-template-columns: 1fr 1fr 300px;
-    grid-template-rows: 400px 100px;
+    grid-template-columns: 1fr;
+    grid-template-rows: 200px 1fr;
     gap: 8px 8px;
     grid-template-areas:
-      "graph graph temperature"
-      "control control control";
+      "temperature"
+      "control";
   }
 
   * {
@@ -14,10 +14,10 @@
   }
 
   :root {
-    --switch-width: 200px;
-    --switch-height: 100px;
-    --slider-size: 100px;
-    --slider-gap: 6px;
+    --switch-width: 300px;
+    --switch-height: 150px;
+    --slider-size: 150px;
+    --slider-gap: 9px;
   }
 }
 
@@ -29,18 +29,17 @@
     gap: 8px 8px;
     grid-template-areas:
       "temperature"
-      "graph"
       "control";
   }
 
   * {
-    font-size: 32px;
+    font-size: 64px;
   }
 
-  :root {
-    --switch-width: 100px;
-    --switch-height: 50px;
-    --slider-size: 50px;
-    --slider-gap: 3px;
+:root {
+    --switch-width: 300px;
+    --switch-height: 150px;
+    --slider-size: 150px;
+    --slider-gap: 9px;
   }
 }

@@ -23,7 +23,6 @@ struct {
 } static s_files[4] = {{"/spiffs/index.html", &s_index_html},
                        {"/spiffs/styles.css", &s_styles_css},
                        {"/spiffs/layout.css", &s_layout_css},
-                       {"/spiffs/d3.js", &s_d3_js},
                        {"/spiffs/main.js", &s_main_js}};
 
 static httpd_handle_t s_server = NULL;
@@ -95,15 +94,8 @@ httpd_handle_t setup_web_server() {
     httpd_uri_t ws = {.uri = "/ws",
                       .method = HTTP_GET,
                       .handler = ws_req_handler,
-                      .user_ctx = NULL,
                       .is_websocket = true};
     httpd_register_uri_handler(s_server, &ws);
-
-    configuration_mutex = xSemaphoreCreateMutex();
-    if (!configuration_mutex) {
-        ESP_LOGE(TAG, "failed to create target_temperature_mutex");
-        esp_restart();
-    }
 
     ESP_LOGI(TAG, "server started");
 
@@ -129,16 +121,23 @@ esp_err_t send_target_temperature_update(int p_target) {
     ws_message_t *message = malloc(sizeof(ws_message_t));
     message->target = FD_EVERYONE;
 
-    if (xSemaphoreTake(configuration_mutex, portMAX_DELAY) == pdTRUE) {
-        int req_size = snprintf(NULL, 0, fmt_str, target_temperature);
-        message->text = malloc(req_size + 1);
-        snprintf(message->text, req_size + 1, fmt_str, target_temperature);
+    int req_size = snprintf(NULL, 0, fmt_str, target_temperature);
+    message->text = malloc(req_size + 1);
+    snprintf(message->text, req_size + 1, fmt_str, target_temperature);
 
-        xSemaphoreGive(configuration_mutex);
-    } else {
-        ESP_LOGE(TAG, "failed to take target_temperature_mutex");
-        esp_restart();
-    }
+    return httpd_queue_work(s_server, (httpd_work_fn_t)ws_async_send, message);
+}
+
+esp_err_t send_heater_state_update(int p_target) {
+    const char *const fmt_str = "{ \"heater_state\":%s}";
+
+    ws_message_t *message = malloc(sizeof(ws_message_t));
+    message->target = FD_EVERYONE;
+
+    const char *const state_str = heater_state ? "true" : "false";
+    int req_size = snprintf(NULL, 0, fmt_str, state_str);
+    message->text = malloc(req_size + 1);
+    snprintf(message->text, req_size + 1, fmt_str, state_str);
 
     return httpd_queue_work(s_server, (httpd_work_fn_t)ws_async_send, message);
 }
@@ -181,7 +180,13 @@ static esp_err_t get_req_handler(httpd_req_t *p_req) {
 
 static esp_err_t ws_req_handler(httpd_req_t *p_req) {
     if (p_req->method == HTTP_GET) { // handshake done
+        if (xSemaphoreTake(configuration_mutex, portMAX_DELAY) != pdTRUE) {
+            ESP_LOGE(TAG, "failed to take target_temperature_mutex");
+            esp_restart();
+        }
         send_target_temperature_update(httpd_req_to_sockfd(p_req));
+        send_heater_state_update(httpd_req_to_sockfd(p_req));
+        xSemaphoreGive(configuration_mutex);
         return ESP_OK;
     }
 
@@ -231,16 +236,20 @@ static esp_err_t on_message(httpd_ws_frame_t p_frame) {
     if (target_temperature_json && target_temperature_json->type == cJSON_Number) {
         target_temperature = target_temperature_json->valuedouble;
         ESP_LOGI(TAG, "new target temperature %f", target_temperature);
-        xSemaphoreGive(configuration_mutex);
         send_target_temperature_update(FD_EVERYONE);
     }
 
-    cJSON *is_heating_on_json = cJSON_GetObjectItem(root, "is_heating_on");
-    if (is_heating_on_json &&
-        (is_heating_on_json->type == cJSON_True || is_heating_on_json->type == cJSON_False)) {
-        is_heating_on = is_heating_on_json->type == cJSON_True;
-        ESP_LOGI(TAG, "is on updated to: %s", is_heating_on ? "ON" : "OFF");
+    cJSON *heater_state_json = cJSON_GetObjectItem(root, "heater_state");
+    if (heater_state_json &&
+        (heater_state_json->type == cJSON_True || heater_state_json->type == cJSON_False)) {
+        heater_state = heater_state_json->type == cJSON_True;
+        ESP_LOGI(TAG, "is on updated to: %s", heater_state ? "ON" : "OFF");
+        send_heater_state_update(FD_EVERYONE);
     }
+
+    save_heater_configuration_to_nvs();
+
+    xSemaphoreGive(configuration_mutex);
 
     cJSON_Delete(root);
 
@@ -251,7 +260,6 @@ static esp_err_t on_message(httpd_ws_frame_t p_frame) {
 // httpd_queue_work(s_server, ws_async_send, p_message);
 
 static void ws_async_send(ws_message_t *p_message) {
-
     httpd_ws_frame_t ws_pkt;
     ws_pkt.payload = (uint8_t *)p_message->text;
     ws_pkt.len = strlen(p_message->text);

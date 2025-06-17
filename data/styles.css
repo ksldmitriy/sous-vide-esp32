@@ -3,24 +3,19 @@ html {
   text-align: center;
 }
 
+* {
+  color: #ccc;
+}
+
+body {
+  background-color: #48545d;
+}
+
 .temperature-div {
   grid-area: temperature;
   display: flex;
   justify-content: center;
   align-items: center;
-}
-
-#graph {
-  grid-area: graph;
-  min-width: 100%;
-  min-height: 100%;
-  max-width: 100%;
-  max-height: 100%;
-  background-color: lightblue;
-}
-
-.axis {
-  font-size: 18px;
 }
 
 .control-div {
@@ -32,13 +27,15 @@ html {
 
 #target-temperature {
   text-align: center;
-  background: darkgray;
+  background: #2d3748;
   border: none;
-  width: 200px;
+  border-radius: calc(var(--switch-height) / 8);
+  width: var(--switch-width);
+  height: var(--switch-height);
 }
 
-input:focus {
-  background: lightblue;
+#target-temperature:focus {
+  background: #38444d;
   border: 2px;
 }
 
@@ -63,28 +60,30 @@ input:focus {
   right: 0;
   bottom: 0;
   background-color: #ccc;
-  -webkit-transition: transform 0.4s ease;
-  transition: transform 0.4s ease;
+  -webkit-transition: 0.4s;
+  transition: 0.4s;
 }
 
 .slider:before {
   position: absolute;
   content: "";
   height: calc(var(--slider-size) - var(--slider-gap) * 2);
-  width: calc(var(--slider-size) - var(--slider-gap) * 2);;
+  width: calc(var(--slider-size) - var(--slider-gap) * 2);
   left: var(--slider-gap);
   bottom: var(--slider-gap);
-  background-color: green;
-  -webkit-transition: transform 0.4s ease;
-  transition: transform 0.4s ease;
+  background-color: #2d3748;
+  -webkit-transition: 0.4s;
+  transition: 0.4s;
 }
 
+/* #04AA6D */
+
 input:checked + .slider {
-  background-color: #2196f3;
+  background-color: #04aa6d;
 }
 
 input:focus + .slider {
-  box-shadow: 0 0 1px #2196f3;
+  box-shadow: 0 0 1px #2d3748;
 }
 
 input:checked + .slider:before {
